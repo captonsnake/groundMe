@@ -8,7 +8,7 @@ import base64
 from datetime import datetime
 
 pullPCAPS = """mkdir /tmp/{folder};
-for i in `find /nsm/sensor_data/ -name *.log.* -type f`;
+for i in `find {target} -name *.log.* -type f`;
 do tcpdump -nr $i -w /tmp/{folder}/`echo $i | awk -F/ '{{print $NF}}'`.pcap {filters};
 done;
 mergecap -w /tmp/{folder}/all.pcap /tmp/{folder}/*;
@@ -61,7 +61,7 @@ class remoteHost():
         return self.__repr__()
 
 
-def buildPCAPCMD(destFolder, inFilters):
+def buildPCAPCMD(destFolder, inFilters, searchDir):
     global pullPCAPS
     if inFilters:
         filterstring = inFilters[0]
@@ -73,7 +73,7 @@ def buildPCAPCMD(destFolder, inFilters):
             pass
     else:
         filterstring = ""
-    pullPCAPS = pullPCAPS.format(folder=destFolder, filters=filterstring)
+    pullPCAPS = pullPCAPS.format(folder=destFolder, filters=filterstring, target=searchDir)
 
  
 def main():
@@ -91,6 +91,9 @@ def main():
     parser.add_argument('-o', '--output',
                         default=defaultDir,
                         help='Output folder to store the resulting PCAPS. Default is ./<dtg>')
+    parser.add_argument('-t', '--targetDir',
+                        default="/nsm/sensor_data/",
+                        help='Set the root search directory for finding log files. Default: /nsm/sensor_data/')
     args = parser.parse_args()
 
     hosts = [remoteHost(host) for host in args.host]
@@ -102,9 +105,9 @@ def main():
         pass
 
     if args.filter:
-        buildPCAPCMD(defaultDir, args.filter)
+        buildPCAPCMD(defaultDir, args.filter, args.targetDir)
     else:
-        buildPCAPCMD(defaultDir, "")
+        buildPCAPCMD(defaultDir, "", args.targetDir)
     [host.execute(pullPCAPS) for host in hosts]
     [host.getFile(args.output) for host in hosts]
 
